@@ -1,6 +1,7 @@
 package com.pesapal.sdk
 
 import com.pesapal.sdk.config.PesapalConfig
+import com.pesapal.sdk.constants.PesapalConstants
 import com.pesapal.sdk.exceptions.PesapalApiException
 import com.pesapal.sdk.exceptions.PesapalAuthException
 import com.pesapal.sdk.models.requests.AuthRequest
@@ -54,7 +55,7 @@ class PesapalClient(
             return token!!
         }
 
-        val response = httpClient.post("${config.baseUrl}/Auth/RequestToken") {
+        val response = httpClient.post("${config.baseUrl}/${PesapalConstants.AUTH}") {
             contentType(ContentType.Application.Json)
             setBody(AuthRequest(config.consumerKey, config.consumerSecret))
         }
@@ -71,6 +72,7 @@ class PesapalClient(
                     throw PesapalAuthException("Authentication failed: ${authResponse.message}", authResponse.error)
                 }
             }
+
             else -> throw PesapalApiException(
                 "Failed to authenticate with Pesapal",
                 response.status,
@@ -81,7 +83,7 @@ class PesapalClient(
 
     suspend fun registerIPN(ipnUrl: String = config.ipnUrl, notificationType: String = "GET"): IPNResponse {
         ensureAuthenticated()
-        return httpClient.post("${config.baseUrl}/URLSetup/RegisterIPN") {
+        return httpClient.post("${config.baseUrl}/${PesapalConstants.REGISTER_IPN}") {
             contentType(ContentType.Application.Json)
             bearerAuth(token!!)
             setBody(IPNRequest(ipnUrl, notificationType))
@@ -106,7 +108,7 @@ class PesapalClient(
 
     suspend fun getRegisteredIPNs(): List<IPNResponse> {
         ensureAuthenticated()
-        return httpClient.get("${config.baseUrl}/URLSetup/GetIpnList") {
+        return httpClient.get("${config.baseUrl}/${PesapalConstants.REGISTERED_IPN}") {
             bearerAuth(token!!)
         }.handleResponse()
     }
@@ -115,9 +117,15 @@ class PesapalClient(
         ensureAuthenticated()
         val notificationId = getOrRegisterIPN()
 
-        val enhancedRequest = orderRequest.copy(notificationId = notificationId)
+        val enhancedRequest = orderRequest.copy(
+            description = "Payment for products",
+            redirectMode = "PARENT_WINDOW",
+            notificationId = notificationId,
+            callbackUrl = config.callbackUrl,
+            cancellationUrl = config.cancellationUrl
+        )
 
-        return httpClient.post("${config.baseUrl}/Transactions/submitOrderRequest") {
+        return httpClient.post("${config.baseUrl}/${PesapalConstants.SUBMIT_ORDER}") {
             contentType(ContentType.Application.Json)
             bearerAuth(token!!)
             setBody(enhancedRequest)
@@ -126,7 +134,7 @@ class PesapalClient(
 
     suspend fun getTransactionStatus(orderTrackingId: String): OrderTransactionResponse {
         ensureAuthenticated()
-        return httpClient.get("${config.baseUrl}/Transactions/GetTransactionStatus") {
+        return httpClient.get("${config.baseUrl}/${PesapalConstants.TRANSACTION_STATUS}") {
             bearerAuth(token!!)
             parameter("orderTrackingId", orderTrackingId)
         }.handleResponse()
@@ -134,7 +142,7 @@ class PesapalClient(
 
     suspend fun requestRefund(refundRequest: RefundRequest): RefundResponse {
         ensureAuthenticated()
-        return httpClient.post("${config.baseUrl}/Transactions/RefundRequest") {
+        return httpClient.post("${config.baseUrl}/${PesapalConstants.REQUEST_REFUND}") {
             contentType(ContentType.Application.Json)
             bearerAuth(token!!)
             setBody(refundRequest)
@@ -143,7 +151,7 @@ class PesapalClient(
 
     suspend fun cancelOrder(orderCancellationRequest: OrderCancellationRequest): OrderCancellationResponse {
         ensureAuthenticated()
-        return httpClient.post("${config.baseUrl}/Transactions/cancelOrder") {
+        return httpClient.post("${config.baseUrl}/${PesapalConstants.CANCEL_ORDER}") {
             contentType(ContentType.Application.Json)
             bearerAuth(token!!)
             setBody(orderCancellationRequest)
@@ -173,6 +181,7 @@ class PesapalClient(
                     throw PesapalAuthException("Authentication failed")
                 }
             }
+
             else -> throw PesapalApiException(
                 message = "Pesapal API request failed",
                 statusCode = status,
