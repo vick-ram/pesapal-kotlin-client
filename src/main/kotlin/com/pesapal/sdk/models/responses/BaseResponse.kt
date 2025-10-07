@@ -15,5 +15,5 @@ interface BaseResponse {
         return error?.message ?: message ?: "Unknown error"
     }
 
-    fun getError(): ErrorResponse? = error
+//    fun getError(): ErrorResponse? = error
 }

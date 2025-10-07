@@ -159,7 +159,7 @@ class PesapalClient(
                     throw PesapalApiException(
                         message = "Pesapal API error: ${responseBody.getErrorMessage()}",
                         statusCode = status,
-                        error = responseBody.getError()
+                        error = responseBody.error
                     )
                 }
                 responseBody
